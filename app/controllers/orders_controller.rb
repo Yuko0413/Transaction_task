@@ -10,12 +10,40 @@ class OrdersController < ApplicationController
   end
 
   def create
+    ActiveRecord::Base.transaction do
     @order = current_user.orders.build(order_params)
-    @order.save
-    @order.update_total_quantity
-    # update_total_quantityメソッドは、注文された発注量を総量に反映するメソッドであり、Orderモデルに定義されています。
-    redirect_to orders_path
-  end
+
+    @order.ordered_lists.each do |ordered_list|
+      item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
+      if item.stock < ordered_list.quantity
+        flash[:error] = "在庫が不足しています。"
+        raise ActiveRecord::Rollback
+      else
+        item.update!(stock: item.stock - ordered_list.quantity)
+      end
+    end
+
+    if @order.save
+          @order.update_total_quantity
+          redirect_to orders_path, notice: '注文が正常に作成されました。'
+        else
+          raise ActiveRecord::Rollback
+        end
+      end
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::Rollback
+      flash[:error] ||= "注文の処理に失敗しました。"
+      redirect_to new_order_path
+    end
+
+        @order.update_total_quantity
+        # update_total_quantityメソッドは、注文された発注量を総量に反映するメソッドであり、Orderモデルに定義されています。
+        redirect_to orders_path
+      end
+    end
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::Rollback
+      flash[:error] ||= "注文の処理に失敗しました。"
+      redirect_to new_order_path
+    end
 
   private
 
