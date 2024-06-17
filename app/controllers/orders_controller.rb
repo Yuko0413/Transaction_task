@@ -13,12 +13,12 @@ class OrdersController < ApplicationController
     ActiveRecord::Base.transaction do
       @order = current_user.orders.build(order_params)
 
-      # 注文の保存
+      @order.ordered_lists.each do |ordered_list|
+        item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
+        item.update!(stock: item.stock - ordered_list.quantity)
+      end
+
       if @order.save
-        @order.ordered_lists.each do |ordered_list|
-          item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
-          item.update!(stock: item.stock - ordered_list.quantity)
-        end
         @order.update_total_quantity
         redirect_to orders_path, notice: '注文が正常に作成されました。'
       else
@@ -26,7 +26,7 @@ class OrdersController < ApplicationController
       end
     end
   rescue ActiveRecord::RecordInvalid, ActiveRecord::Rollback
-    flash[:error] ||= "注文の処理に失敗しました。"
+    flash[:error] = "注文の処理に失敗しました。"
     redirect_to new_order_path
   end
 
