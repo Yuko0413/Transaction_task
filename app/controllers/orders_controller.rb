@@ -13,20 +13,10 @@ class OrdersController < ApplicationController
     ActiveRecord::Base.transaction do
       @order = current_user.orders.build(order_params)
 
-      @order.ordered_lists.each do |ordered_list|
-        item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
-
-        # 在庫の確認
-        if item.stock < ordered_list.quantity
-          flash[:error] = "在庫が不足しています。"
-          raise ActiveRecord::Rollback
-        end
-      end
-
       # 注文の保存
       if @order.save
         @order.ordered_lists.each do |ordered_list|
-          item = Item.lock.find(ordered_list.item_id) # 再度ロックを取得
+          item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
           item.update!(stock: item.stock - ordered_list.quantity)
         end
         @order.update_total_quantity
