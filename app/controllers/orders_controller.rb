@@ -14,8 +14,7 @@ class OrdersController < ApplicationController
       @order = current_user.orders.build(order_params)
 
       @order.ordered_lists.each do |ordered_list|
-        item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
-        item.update!(stock: item.stock - ordered_list.quantity)
+        Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
       end
 
       if @order.save
