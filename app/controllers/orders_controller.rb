@@ -29,9 +29,4 @@ class OrdersController < ApplicationController
     redirect_to new_order_path
   end
 
-  private
-
-  def order_params
-    params.require(:order).permit(ordered_lists_attributes: [:item_id, :quantity])
-  end
-end
+ 
