@@ -6,7 +6,7 @@ class Order < ApplicationRecord
 
   def update_total_quantity
     self.ordered_lists.each do |line_item|
-      item = Item.find_by(id: line_item.item_id)
+      item = Item.lock.find(line_item.item_id) # 悲観的ロックを使用
       item.total_quantity += line_item.quantity
       item.save!
     end

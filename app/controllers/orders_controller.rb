@@ -13,12 +13,12 @@ class OrdersController < ApplicationController
     ActiveRecord::Base.transaction do
       @order = current_user.orders.build(order_params)
 
-      @order.ordered_lists.each do |ordered_list|
-        Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
-      end
-
       if @order.save
-        @order.update_total_quantity
+        @order.ordered_lists.each do |ordered_list|
+          item = Item.lock.find(ordered_list.item_id) # 悲観的ロックを使用
+          item.total_quantity += ordered_list.quantity
+          item.save!
+        end
         redirect_to orders_path, notice: '注文が正常に作成されました。'
       else
         raise ActiveRecord::Rollback
